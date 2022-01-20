@@ -13,6 +13,7 @@
 #ifdef Q_OS_LINUX
 #include "client/linux/handler/exception_handler.h"
 
+namespace  {
 bool dumpCallback(const google_breakpad::MinidumpDescriptor& descriptor, void *context, bool succeeded)
 {
     auto platform = reinterpret_cast<ValWell::PlatformHelper*>(context);
@@ -58,6 +59,7 @@ bool dumpCallback(const google_breakpad::MinidumpDescriptor& descriptor, void *c
     loop.exec();
     return succeeded;
 }
+}
 
 namespace ValWell {
 
@@ -79,8 +81,8 @@ PlatformHelper::PlatformHelper(const QSharedPointer<InfoManager>& info)
     , minidumpStackwalkPath(QString())
     , crashReportFilePath(QString())
 {
-    dumpSymsPath = QDir::toNativeSeparators(QString("%1/dump_syms").arg(QCoreApplication::applicationDirPath()));
-    minidumpStackwalkPath = QDir::toNativeSeparators(QString("%1/minidump_stackwalk").arg(QCoreApplication::applicationDirPath()));
+    dumpSymsPath = QString("%1/breakpad/dump_syms").arg(QCoreApplication::applicationDirPath());
+    minidumpStackwalkPath = QString("%1/breakpad/minidump_stackwalk").arg(QCoreApplication::applicationDirPath());
 }
 
 PlatformHelper::~PlatformHelper()
@@ -90,14 +92,12 @@ PlatformHelper::~PlatformHelper()
 void PlatformHelper::initCrashHandler()
 {
     outputPath = QCoreApplication::applicationDirPath() + QLatin1String("/breakpad");
-    outputPath = QDir::toNativeSeparators(outputPath);
     QDir dir(outputPath);
     if (!dir.exists()) {
         dir.mkdir(outputPath);
     }
 
     _private->_descriptor.reset(new google_breakpad::MinidumpDescriptor(outputPath.toStdString()));
-//    auto eh = new google_breakpad::ExceptionHandler(*(_private->_descriptor), nullptr, dumpCallback, this, true, -1);
     _private->_excepHandler.reset(new google_breakpad::ExceptionHandler(*_private->_descriptor, nullptr, dumpCallback, this, true, -1));
 }
 
@@ -111,8 +111,8 @@ bool PlatformHelper::archiveSym(const QString &appName, const QString &appDirPat
         readData->append(dumpSymProcess->readAllStandardOutput());
     });
 
-    QString appNamePath = QDir::toNativeSeparators(appDirPath + "/" + appName);
-    infoManager->pushInfo(QObject::tr("building %1 sym file...").arg(appName));
+    QString appNamePath = appDirPath + "/" + appName;
+//    infoManager->pushInfo(QObject::tr("building %1 sym file...").arg(appName));
 
     // 类型命令: dump_sym [appName/sharedLibName]
     dumpSymProcess->start(dumpSymsPath, {appNamePath});
@@ -135,7 +135,7 @@ bool PlatformHelper::archiveSym(const QString &appName, const QString &appDirPat
         return false;
     }
     // 创建symid文件夹
-    QString symDirPath = QDir::toNativeSeparators(QString("%1/symbols/%2/%3").arg(breakpadPath()).arg(appName).arg(symId));
+    QString symDirPath = QString("%1/symbols/%2/%3").arg(breakpadPath()).arg(appName).arg(symId);
     QDir symDir(symDirPath);
     if (!symDir.mkpath(symDirPath)) {
         infoManager->pushInfo(QObject::tr("make path: %1 failed!").arg(symDirPath));
@@ -143,7 +143,7 @@ bool PlatformHelper::archiveSym(const QString &appName, const QString &appDirPat
     }
 
     // 写.sym文件
-    QString newSymFilePath = QDir::toNativeSeparators(QString("%1/%2.sym").arg(symDirPath).arg(appName));
+    QString newSymFilePath = QString("%1/%2.sym").arg(symDirPath).arg(appName);
     QFile newSymFile(newSymFilePath);
     if (!newSymFile.open(QFile::WriteOnly)) {
         infoManager->pushInfo(QObject::tr("Open %1 failed! %2").arg(newSymFilePath).arg(newSymFile.errorString()));

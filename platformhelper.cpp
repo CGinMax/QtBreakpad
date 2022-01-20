@@ -1,10 +1,12 @@
 ﻿#include "platformhelper.h"
-#include <QDir>
-#include <QProcess>
-#include <QFile>
-#include <QSharedPointer>
+
 #include <QBuffer>
+#include <QCoreApplication>
 #include <QDateTime>
+#include <QDir>
+#include <QFile>
+#include <QProcess>
+#include <QSharedPointer>
 
 namespace ValWell {
 
@@ -44,7 +46,7 @@ void PlatformHelper::infoFinished()
 
 void PlatformHelper::updateBreakpadPath()
 {
-    outputPath.append(QDir::toNativeSeparators("/") + QDateTime::currentDateTime().toString("yyyy-MM-dd_hh:mm:ss.zzz"));
+    outputPath += QString("/%1_%2").arg(QCoreApplication::applicationName()).arg(QDateTime::currentDateTime().toString("yyyy-MM-dd_hh-mm-ss"));
 }
 
 QString PlatformHelper::breakpadPath() const
@@ -65,13 +67,13 @@ QString PlatformHelper::getCrashReportFilePath() const
 void PlatformHelper::prepareReportFilePath()
 {
     if (crashReportFilePath.isEmpty()) {
-        setCrashReportFilePath(QDir::toNativeSeparators(breakpadPath() + QLatin1String("/crash_report.bug")));
+        setCrashReportFilePath(breakpadPath() + QLatin1String("/crash_report.bug"));
     }
 }
 
 QStringList PlatformHelper::prepareSharedLib(const QString &dirPath, const QString suffix)
 {
-    QDir sharedLibDir(QDir::toNativeSeparators(dirPath));
+    QDir sharedLibDir(dirPath);
     QStringList filenameList;
     QFileInfoList fileinfoList = sharedLibDir.entryInfoList(QDir::Files);
 
@@ -86,10 +88,10 @@ QStringList PlatformHelper::prepareSharedLib(const QString &dirPath, const QStri
 
 QString PlatformHelper::archiveDumpFile(const QString& oldDumpFilePath)
 {
-    int lastSlashIdx = oldDumpFilePath.lastIndexOf(QDir::toNativeSeparators("/"));
+    int lastSlashIdx = oldDumpFilePath.lastIndexOf("/");
     QString dumpFileName = oldDumpFilePath.right(oldDumpFilePath.size() - lastSlashIdx - 1);
 
-    QString newDumpFilePath = breakpadPath() + QDir::toNativeSeparators("/") + dumpFileName;
+    QString newDumpFilePath = breakpadPath() + "/" + dumpFileName;
     infoManager->pushDumpPath(newDumpFilePath);
 
     QDir reportDir(breakpadPath());
@@ -115,7 +117,7 @@ bool PlatformHelper::reportCrash(const QString &dumpFilePath)
 {
     QSharedPointer<QProcess> minidumpProcess(new QProcess());
     QSharedPointer<QByteArray> readData(new QByteArray());
-    QString symbolsDirPath(QDir::toNativeSeparators(breakpadPath() + QLatin1String("/symbols")));
+    QString symbolsDirPath(breakpadPath() + QLatin1String("/symbols"));
 
     // 将输出写入到 crashReportFilePath
     QObject::connect(minidumpProcess.data(), &QProcess::readyReadStandardOutput, [=](){
@@ -154,7 +156,7 @@ bool PlatformHelper::reportCrash(const QString &dumpFilePath)
 
 bool PlatformHelper::removeSymbolDir()
 {
-    QDir dir(QDir::toNativeSeparators(breakpadPath() + QLatin1String("/symbols")));
+    QDir dir(breakpadPath() + QLatin1String("/symbols"));
     return dir.removeRecursively();
 }
 

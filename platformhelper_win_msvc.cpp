@@ -80,8 +80,8 @@ PlatformHelper::PlatformHelper(const QSharedPointer<InfoManager>& info)
     , minidumpStackwalkPath(QString())
     , crashReportFilePath(QString())
 {
-    dumpSymsPath = QDir::toNativeSeparators(QString("%1/dump_syms.exe").arg(QCoreApplication::applicationDirPath()));
-    minidumpStackwalkPath = QDir::toNativeSeparators(QString("%1/minidump_stackwalk.exe").arg(QCoreApplication::applicationDirPath()));
+    dumpSymsPath = QString("%1/breakpad/dump_syms.exe").arg(QCoreApplication::applicationDirPath());
+    minidumpStackwalkPath = QString("%1/breakpad/minidump_stackwalk.exe").arg(QCoreApplication::applicationDirPath());
 
 }
 PlatformHelper::~PlatformHelper()
@@ -90,7 +90,6 @@ PlatformHelper::~PlatformHelper()
 void PlatformHelper::initCrashHandler()
 {
     outputPath = QCoreApplication::applicationDirPath() + QLatin1String("/breakpad");
-    outputPath = QDir::toNativeSeparators(outputPath);
 
 //    auto eh = new google_breakpad::ExceptionHandler(outputPath.toStdWString(), nullptr, callback, nullptr, google_breakpad::ExceptionHandler::HANDLER_ALL);
     _private->_excepHandler.reset(new google_breakpad::ExceptionHandler(/*outputPath.toStdWString()*/L".", nullptr, callback, nullptr, google_breakpad::ExceptionHandler::HANDLER_ALL));
@@ -100,7 +99,7 @@ bool PlatformHelper::archiveSym(const QString &appName, const QString &appDirPat
 {
     QFileInfo appInfo(appDirPath, appName);
     QString newAppName = appName;
-    if (QFile::exists(QDir::toNativeSeparators(appDirPath + "/" + appInfo.completeBaseName() + ".pdb"))) {
+    if (QFile::exists(QString("%1/%2.pdb").arg(appDirPath).arg(appInfo.completeBaseName()))) {
         newAppName = appInfo.completeBaseName() + ".pdb";
     }
     QSharedPointer<QProcess> dumpSymProcess(new QProcess());
@@ -110,7 +109,7 @@ bool PlatformHelper::archiveSym(const QString &appName, const QString &appDirPat
         readData->append(dumpSymProcess->readAllStandardOutput());
     });
 
-    QString appNamePath = QDir::toNativeSeparators(appDirPath + "/" + newAppName);
+    QString appNamePath = appDirPath + "/" + newAppName;
     dumpSymProcess->start(dumpSymsPath, {appNamePath});
     dumpSymProcess->waitForFinished();
     dumpSymProcess->close();
@@ -125,13 +124,13 @@ bool PlatformHelper::archiveSym(const QString &appName, const QString &appDirPat
     if (symId.isEmpty()) {
         return false;
     }
-    QString symDirPath = QDir::toNativeSeparators(QString("%1/symbols/%2/%3").arg(breakpadPath()).arg(newAppName).arg(symId));
+    QString symDirPath = QString("%1/symbols/%2/%3").arg(breakpadPath()).arg(newAppName).arg(symId);
     QDir symDir(symDirPath);
     if (!symDir.mkpath(symDirPath)) {
         return false;
     }
     // xxx.sym，不需要.pdb或.exe
-    QString newSymFilePath = QDir::toNativeSeparators(QString("%1/%2.sym").arg(symDirPath).arg(appInfo.completeBaseName()));
+    QString newSymFilePath = QString("%1/%2.sym").arg(symDirPath).arg(appInfo.completeBaseName());
     QFile newSymFile(newSymFilePath);
     if (!newSymFile.open(QFile::WriteOnly)) {
         return false;
