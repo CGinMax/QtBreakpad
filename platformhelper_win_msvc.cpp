@@ -8,7 +8,7 @@
 #include <QtConcurrent>
 #include <QEventLoop>
 #include <functional>
-
+#include <QDebug>
 #if defined (Q_OS_WIN32) && defined (Q_CC_MSVC)
 #include "client/windows/handler/exception_handler.h"
 bool callback(const wchar_t *dump_path, const wchar_t *id, void *context, EXCEPTION_POINTERS *exinfo, MDRawAssertionInfo *assertion, bool succeeded)
@@ -17,7 +17,7 @@ bool callback(const wchar_t *dump_path, const wchar_t *id, void *context, EXCEPT
     platform->updateBreakpadPath();
     platform->prepareReportFilePath();
 
-    QString newDumpFilePath(platform->archiveDumpFile(QString::fromWCharArray(dump_path)));
+    QString newDumpFilePath(platform->archiveDumpFile(QString::fromWCharArray(dump_path) + "/" + QString::fromWCharArray(id) + ".dmp"));
     if (newDumpFilePath.isEmpty()) {
         qDebug("move dump file path error");
         return succeeded;
@@ -92,7 +92,7 @@ void PlatformHelper::initCrashHandler()
     outputPath = QCoreApplication::applicationDirPath() + QLatin1String("/breakpad");
 
 //    auto eh = new google_breakpad::ExceptionHandler(outputPath.toStdWString(), nullptr, callback, nullptr, google_breakpad::ExceptionHandler::HANDLER_ALL);
-    _private->_excepHandler.reset(new google_breakpad::ExceptionHandler(/*outputPath.toStdWString()*/L".", nullptr, callback, nullptr, google_breakpad::ExceptionHandler::HANDLER_ALL));
+    _private->_excepHandler.reset(new google_breakpad::ExceptionHandler(outputPath.toStdWString(), nullptr, callback, this, google_breakpad::ExceptionHandler::HANDLER_ALL));
 }
 
 bool PlatformHelper::archiveSym(const QString &appName, const QString &appDirPath)
